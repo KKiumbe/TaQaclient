@@ -51,13 +51,13 @@ const ReceiptScreen = () => {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             <Text style={styles.title}>Receipt Details</Text>
-            <Text style={styles.label}>Receipt Number: {receipt.receiptNumber}</Text>
+            <Text style={styles.label}>Receipt Number: {receipt?.receiptNumber}</Text>
             <Text style={styles.label}>Paid By: {receipt.customer?.firstName} {receipt.customer?.lastName}</Text>
             <Text style={styles.label}>Phone Number: {receipt.customer?.phoneNumber}</Text>
-            <Text style={styles.label}>Total Amount: KES {receipt.amount}</Text>
-            <Text style={styles.label}>Payment Method: {receipt.modeOfPayment}</Text>
+            <Text style={styles.label}>Total Amount: KES {receipt?.amount}</Text>
+            <Text style={styles.label}>Payment Method: {receipt?.modeOfPayment}</Text>
             <Text style={styles.label}>Transaction ID: {receipt.payment?.mpesaTransactionId}</Text>
-            <Text style={styles.label}>Date: {new Date(receipt.payment.createdAt).toLocaleString()}</Text>
+            <Text style={styles.label}>Date: {new Date(receipt.payment?.createdAt).toLocaleString()}</Text>
             <Text style={styles.label}>Customer Closing Balance: KES {receipt.customer?.closingBalance}</Text> 
 
 
@@ -65,12 +65,12 @@ const ReceiptScreen = () => {
             {receipt.receiptInvoices && receipt.receiptInvoices.length > 0 ? (
                 receipt.receiptInvoices.map((receiptInvoice) => (
                     <View key={receiptInvoice.id} style={styles.invoiceContainer}>
-                        <Text style={styles.invoiceText}>Invoice ID: {receiptInvoice.invoice.id}</Text>
-                        <Text style={styles.invoiceText}>Invoice Number: {receiptInvoice.invoice.invoiceNumber}</Text>
-                        <Text style={styles.invoiceText}>Invoice Amount: KES {receiptInvoice.invoice.invoiceAmount}</Text>
-                        <Text style={styles.invoiceText}>Status: {receiptInvoice.invoice.status}</Text>
-                        <Text style={styles.invoiceText}>Amount Paid: KES {receiptInvoice.invoice.amountPaid}</Text>
-                        <Text style={styles.invoiceText}>Created At: {new Date(receiptInvoice.invoice.createdAt).toLocaleString()}</Text>
+                        <Text style={styles.invoiceText}>Invoice ID: {receiptInvoice?.invoice.id}</Text>
+                        <Text style={styles.invoiceText}>Invoice Number: {receiptInvoice.invoice?.invoiceNumber}</Text>
+                        <Text style={styles.invoiceText}>Invoice Amount: KES {receiptInvoice.invoice?.invoiceAmount}</Text>
+                        <Text style={styles.invoiceText}>Status: {receiptInvoice.invoice?.status}</Text>
+                        <Text style={styles.invoiceText}>Amount Paid: KES {receiptInvoice.invoice?.amountPaid}</Text>
+                        <Text style={styles.invoiceText}>Created At: {new Date(receiptInvoice.invoice?.createdAt).toLocaleString()}</Text>
 
                     </View>
                 ))

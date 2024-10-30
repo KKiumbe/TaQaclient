@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: process.env.APP_NAME || 'TaQa Mali',
     slug: 'client',
-    icon: 'TaQa/client/client/assets/images/icon.png',
+    icon: './assets/images/icon.png',
     version: '1.0.0',
     orientation: 'portrait',
     splash: {
