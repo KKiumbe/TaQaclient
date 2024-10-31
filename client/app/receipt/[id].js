@@ -56,7 +56,7 @@ const ReceiptScreen = () => {
             <Text style={styles.label}>Phone Number: {receipt.customer?.phoneNumber}</Text>
             <Text style={styles.label}>Total Amount: KES {receipt?.amount}</Text>
             <Text style={styles.label}>Payment Method: {receipt?.modeOfPayment}</Text>
-            <Text style={styles.label}>Transaction ID: {receipt.payment?.mpesaTransactionId}</Text>
+            <Text style={styles.label}>Transaction ID: {receipt.payment?.TransactionId}</Text>
             <Text style={styles.label}>Date: {new Date(receipt.payment?.createdAt).toLocaleString()}</Text>
             <Text style={styles.label}>Customer Closing Balance: KES {receipt.customer?.closingBalance}</Text> 
 

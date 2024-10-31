@@ -7,7 +7,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import useAuthStore from '../../store/authStore';
 
-const BASEURL =process.env.EXPO_PUBLIC_API_URL
+const BASEURL = process.env.EXPO_PUBLIC_API_URL;
+
 const InvoiceScreen = () => {
   const [invoices, setInvoices] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,10 +22,9 @@ const InvoiceScreen = () => {
   const [fabVisible, setFabVisible] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); // Add refreshing state
+  const [refreshing, setRefreshing] = useState(false);
 
   const limit = 20;
-
   const currentUser = useAuthStore((state) => state.currentUser);
   const { colors } = useTheme();
 
@@ -39,12 +39,11 @@ const InvoiceScreen = () => {
     checkToken();
   }, []);
 
-
   const onRefresh = async () => {
     setRefreshing(true);
-    fetchCustomers().then(() => setRefreshing(false));;
-   
+    fetchInvoices(true).then(() => setRefreshing(false));
   };
+
   const fetchInvoices = async (reset = false) => {
     if (reset) {
       setOffset(0);
@@ -54,7 +53,6 @@ const InvoiceScreen = () => {
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('user');
-      
       if (!token) {
         router.push('login');
         return;
@@ -154,7 +152,6 @@ const InvoiceScreen = () => {
     useCallback(() => {
       fetchInvoices(true);
       setFabVisible(true);
-
       return () => {
         setFabVisible(false);
       };
@@ -204,6 +201,13 @@ const InvoiceScreen = () => {
         >
           Cancelled
         </Button>
+        <Button
+          mode="contained"
+          onPress={() => handleStatusFilter('PPAID')}
+          style={[styles.filterButton, statusFilter === 'PPAID' && styles.activeFilter]}
+        >
+          Partially Paid
+        </Button>
       </View>
 
       <TextInput
@@ -222,10 +226,9 @@ const InvoiceScreen = () => {
         <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
       ) : (
         <ScrollView onScroll={handleScroll} scrollEventThrottle={16}
-        
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         >
           <DataTable>
             <DataTable.Header>
@@ -247,6 +250,8 @@ const InvoiceScreen = () => {
                   rowColor = colors.primary; // Blue shade
                 } else if (invoice.status === 'PAID') {
                   rowColor = colors.success; // Green shade
+                } else if (invoice.status === 'PPAID') {
+                  rowColor = '#cce5ff'; // Light blue shade for Partially Paid
                 }
 
                 return (
@@ -311,7 +316,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#007BFF',
-    paddingTop:50
+    paddingTop: 50,
   },
   menu: {
     marginRight: 16,

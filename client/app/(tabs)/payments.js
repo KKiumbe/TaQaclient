@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Text, Modal, Pressable, ScrollView, TextInput, RefreshControl } from 'react-native';
+import { View, StyleSheet, Text, Modal, Pressable, ScrollView, TextInput, RefreshControl, FlatList } from 'react-native';
 import { DataTable, Searchbar, Snackbar, ActivityIndicator } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
 
 const PaymentScreen = () => {
     const [payments, setPayments] = useState([]);
@@ -143,6 +144,30 @@ const PaymentScreen = () => {
         setSelectedPayment(null);
     };
 
+
+    const RenderPaymentItem = ({ item }) => (
+        <DataTable.Row key={item.id}>
+            <DataTable.Cell>KES {item.amount}</DataTable.Cell>
+            <DataTable.Cell>{item.modeOfPayment}</DataTable.Cell>
+            <DataTable.Cell>{item.mpesaTransactionId}</DataTable.Cell>
+            <DataTable.Cell>{item.receipted ? 'Receipted' : 'Not Receipted'}</DataTable.Cell>
+            <DataTable.Cell>{item.receipt?.receiptNumber || 'N/A'}</DataTable.Cell>
+            <DataTable.Cell>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        {!item.receipted && (
+            <Pressable onPress={() => handleEditPress(item.id)} style={{ marginRight: 16 }}>
+                <Icon name="pencil" size={24} color="blue" />
+            </Pressable>
+        )}
+        <Pressable onPress={() => openDetailModal(item)}>
+            <Icon name="eye" size={24} color="green" />
+        </Pressable>
+    </View>
+</DataTable.Cell>
+
+        </DataTable.Row>
+    );
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Payments</Text>
@@ -171,25 +196,16 @@ const PaymentScreen = () => {
                         <DataTable.Title>Edit</DataTable.Title>
                     </DataTable.Header>
 
-                    {payments.map((item) => (
-                        <DataTable.Row key={item.id}>
-                            <DataTable.Cell>KES {item.amount}</DataTable.Cell>
-                            <DataTable.Cell>{item.modeOfPayment}</DataTable.Cell>
-                            <DataTable.Cell>{item.mpesaTransactionId}</DataTable.Cell>
-                            <DataTable.Cell>{item.receipted ? 'Receipted' : 'Not Receipted'}</DataTable.Cell>
-                            <DataTable.Cell>{item.receipt?.receiptNumber || 'N/A'}</DataTable.Cell>
-                            <DataTable.Cell>
-                                {!item.receipted && (
-                                    <Pressable onPress={() => handleEditPress(item.id)}>
-                                        <Icon name="pencil" size={24} color="blue" />
-                                    </Pressable>
-                                )}
-                                <Pressable onPress={() => openDetailModal(item)}>
-                                    <Icon name="eye" size={24} color="green" />
-                                </Pressable>
-                            </DataTable.Cell>
-                        </DataTable.Row>
-                    ))}
+
+                    <FlatList
+                    data={searchQuery ? searchResults : payments}
+                    renderItem={RenderPaymentItem}
+                    keyExtractor={(item) => item.id.toString()}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                />
+
+
+
                 </DataTable>
             </ScrollView>
 
