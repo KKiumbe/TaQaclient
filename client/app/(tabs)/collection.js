@@ -92,20 +92,32 @@ const CustomerCollectionScreen = () => {
         setSnackbarVisible(true);
         return;
       }
-      console.log(selectedCustomer);
-      const response = await axios.post(`${BASEURL}/send-sms`, {
-        mobile: selectedCustomer.phoneNumber, 
-        message: smsMessage,
-      });
+      
+      const response = await axios.post(
+        `${BASEURL}/send-sms`,
+        {
+            mobile: selectedCustomer.phoneNumber,
+            message: smsMessage,
+        },
+        {
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        }
+    );
+    
       setSnackbarMessage('SMS sent successfully!');
       setSnackbarVisible(true);
+      setModalVisible(false); // Close modal after sending
       setSmsMessage(''); // Clear the input after sending
+  
     } catch (error) {
       console.error('Error sending SMS:', error.response?.data || error.message);
       setSnackbarMessage('Failed to send SMS.');
       setSnackbarVisible(true);
     }
   };
+  
 
   const handleSendBulkSMS = () => {
     const payload = { day: selectedDay, message: smsMessage };
@@ -197,9 +209,14 @@ const CustomerCollectionScreen = () => {
                   onChangeText={setSmsMessage}
                 />
                 <View style={styles.buttonContainer}>
-                  <Button mode="contained" onPress={handleSendSMS} style={styles.Button}>
-                    Send SMS
-                  </Button>
+                <Button 
+  mode="contained" 
+  onPress={() => handleSendSMS(selectedCustomer)} 
+  style={styles.Button}
+>
+  Send SMS
+</Button>
+
                   <Button mode="contained" onPress={handleCall} style={styles.Button}>
                     Call
                   </Button>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
-import { TextInput, Button, DataTable, Text, Snackbar, FAB, Portal, Menu, IconButton, useTheme } from 'react-native-paper';
+import { View, StyleSheet, ActivityIndicator, RefreshControl, FlatList } from 'react-native';
+import { TextInput, Button, Text, Snackbar, FAB, Portal, Menu, IconButton, useTheme } from 'react-native-paper';
 import { useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -114,14 +114,11 @@ const InvoiceScreen = () => {
     }
   };
 
-  const handleScroll = async (event) => {
-    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 20) {
-      if (!loadingMore && !loading) {
-        setLoadingMore(true);
-        await fetchInvoices();
-        setLoadingMore(false);
-      }
+  const handleScroll = async () => {
+    if (!loadingMore && !loading) {
+      setLoadingMore(true);
+      await fetchInvoices();
+      setLoadingMore(false);
     }
   };
 
@@ -157,6 +154,36 @@ const InvoiceScreen = () => {
       };
     }, [])
   );
+
+  const renderItem = ({ item }) => {
+    return (
+      <View style={styles.row} onTouchEnd={() => router.push(`invoices/${item.id}`)}>
+        {/* Invoice Number */}
+        <Text style={styles.cell}>{item.invoiceNumber.slice(0,4)}</Text>
+        {/* Customer Name */}
+        <Text style={styles.cell}>{`${item.customer.firstName}`}</Text>
+        {/* Invoice Amount */}
+        <Text style={styles.cell}>{item.invoiceAmount}</Text>
+        {/* Status */}
+        <Text style={[styles.cell, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+      </View>
+    );
+  };
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'CANCELLED':
+        return colors.secondary; // Grey shade
+      case 'UNPAID':
+        return colors.primary; // Blue shade
+      case 'PAID':
+        return colors.success; // Green shade
+      case 'PPAID':
+        return '#cce5ff'; // Light blue shade for Partially Paid
+      default:
+        return colors.text; // Default text color
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -225,59 +252,25 @@ const InvoiceScreen = () => {
       {loading ? (
         <ActivityIndicator size="large" color="#007BFF" style={styles.loader} />
       ) : (
-        <ScrollView onScroll={handleScroll} scrollEventThrottle={16}
+        <FlatList
+          data={invoices.filter(invoice => !statusFilter || invoice.status === statusFilter)}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id ? item.id.toString() : item.invoiceNumber} 
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-        >
-          <DataTable>
-            <DataTable.Header>
-              <DataTable.Title><Text>Invoice Number</Text></DataTable.Title>
-              <DataTable.Title><Text>Name</Text></DataTable.Title>
-              <DataTable.Title><Text>Amount</Text></DataTable.Title>
-              <DataTable.Title><Text>Status</Text></DataTable.Title>
-            </DataTable.Header>
 
-            {/* Render filtered invoices */}
-            {invoices
-              .filter(invoice => !statusFilter || invoice.status === statusFilter)
-              .map((invoice) => {
-                // Set row color based on the invoice status
-                let rowColor;
-                if (invoice.status === 'CANCELLED') {
-                  rowColor = colors.secondary; // Grey shade
-                } else if (invoice.status === 'UNPAID') {
-                  rowColor = colors.primary; // Blue shade
-                } else if (invoice.status === 'PAID') {
-                  rowColor = colors.success; // Green shade
-                } else if (invoice.status === 'PPAID') {
-                  rowColor = '#cce5ff'; // Light blue shade for Partially Paid
-                }
-
-                return (
-                  <DataTable.Row
-                    key={invoice.id}
-                    onPress={() => router.push(`invoices/${invoice.id}`)}
-                    style={[styles.row, { backgroundColor: rowColor }]}
-                  >
-                    <DataTable.Cell>
-                      <Text numberOfLines={1} ellipsizeMode="tail">{invoice.invoiceNumber}</Text>
-                    </DataTable.Cell>
-                    <DataTable.Cell>
-                      <Text numberOfLines={1} ellipsizeMode="tail">{`${invoice.customer.firstName} ${invoice.customer.lastName}`}</Text>
-                    </DataTable.Cell>
-                    <DataTable.Cell>
-                      <Text numberOfLines={1} ellipsizeMode="tail">{invoice.invoiceAmount}</Text>
-                    </DataTable.Cell>
-                    <DataTable.Cell>
-                      <Text numberOfLines={1} ellipsizeMode="tail">{invoice.status}</Text>
-                    </DataTable.Cell>
-                  </DataTable.Row>
-                );
-              })}
-          </DataTable>
-          {loadingMore && <ActivityIndicator size="small" color="#007BFF" style={styles.loader} />}
-        </ScrollView>
+          ListHeaderComponent={
+            <View style={styles.row}>
+              <Text style={styles.cell}>Invoice No</Text>
+              <Text style={styles.cell}>Customer Name</Text>
+              <Text style={styles.cell}>Amount</Text>
+              <Text style={styles.cell}>Status</Text>
+            </View>}
+          onEndReached={handleScroll}
+          onEndReachedThreshold={0.1}
+          ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#007BFF" style={styles.loader} /> : null}
+        />
       )}
 
       <Snackbar
@@ -344,6 +337,18 @@ const styles = StyleSheet.create({
   },
   row: {
     height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    backgroundColor: '#fff',
+  },
+  cell: {
+    flex: 1,
+    padding: 8,
+    textAlign: 'center', // Center align text in cells
   },
   fab: {
     position: 'absolute',

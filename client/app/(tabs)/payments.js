@@ -23,6 +23,7 @@ const PaymentScreen = () => {
     const [snackbarOpen, setSnackbarOpen] = useState(false);
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false); // New state for submit process
     const router = useRouter();
     const BASEURL =process.env.EXPO_PUBLIC_API_URL
 
@@ -116,9 +117,8 @@ const PaymentScreen = () => {
             modeOfPayment,
             paidBy: selectedCustomer.firstName,
         };
-       
-        
 
+        setIsProcessing(true); // Set processing to true to disable the submit button and show spinner
         try {
             await axios.post(`${BASEURL}/manual-cash-payment`, payload);
             fetchPayments();
@@ -127,6 +127,8 @@ const PaymentScreen = () => {
             console.error('Error creating payment:', error);
             setSnackbarMessage('Error creating payment.');
             setSnackbarOpen(true);
+        } finally {
+            setIsProcessing(false); // Set processing back to false after transaction
         }
     };
 
@@ -282,8 +284,8 @@ const PaymentScreen = () => {
                             </>
                         )}
 
-                        <Pressable style={styles.submitButton} onPress={handlePaymentSubmit}>
-                            <Text style={styles.submitButtonText}>Submit Payment</Text>
+                    <Pressable style={styles.submitButton} onPress={handlePaymentSubmit} disabled={isProcessing}>
+                            {isProcessing ? <ActivityIndicator size="small" color="white" /> : <Text style={styles.submitButtonText}>Submit Payment</Text>}
                         </Pressable>
 
                         <Pressable style={styles.closeButton} onPress={closeModal}>

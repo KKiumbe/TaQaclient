@@ -17,7 +17,9 @@ const CreateInvoice = () => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null); // Store selected customer
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [loading, setLoading] = useState(false);
+  // Store selected customer
 
   const handleSearchCustomer = async () => {
     if (!searchTerm.trim()) {
@@ -57,6 +59,7 @@ const CreateInvoice = () => {
     };
 
     const token = await AsyncStorage.getItem('user');
+    setLoading(true);
     try {
       const response = await axios.post(`${BASEURL}/invoices/`, invoiceData, {
         headers: {
@@ -66,6 +69,9 @@ const CreateInvoice = () => {
 
       setSnackbarMessage('Invoice created successfully!');
       setSnackbarOpen(true);
+     
+        setLoading(false); // Set loading back to false after the process completes
+      
 
       // Navigate to the invoice details page using the created invoice ID
       const createdInvoiceId = response.data.newInvoice.id;
@@ -114,10 +120,11 @@ const CreateInvoice = () => {
       {/* Display Selected Customer Details */}
       {selectedCustomer && (
         <View style={styles.customerDetails}>
-          <Text>Name: {`${selectedCustomer.firstName} ${selectedCustomer.lastName}`}</Text>
-          <Text>Phone: {selectedCustomer.phoneNumber}</Text>
-          <Text>Category: {selectedCustomer.category}</Text>
-          <Text>Monthly Charge: {selectedCustomer.monthlyCharge}</Text>
+          <Text>Name: {`${selectedCustomer?.firstName} ${selectedCustomer.lastName}`}</Text>
+          <Text>Phone: {selectedCustomer?.phoneNumber}</Text>
+          <Text>Category: {selectedCustomer?.category}</Text>
+          <Text>Monthly Charge: {selectedCustomer?.monthlyCharge}</Text>
+          <Text>closing balance: {selectedCustomer?.closingBalance}</Text>
         </View>
       )}
 
@@ -142,8 +149,8 @@ const CreateInvoice = () => {
         keyboardType="numeric"
         style={styles.input}
       />
-      <Button mode="contained" onPress={handleCreateInvoice}>
-        Create Invoice
+      <Button mode="contained" onPress={handleCreateInvoice} disabled={loading}>
+        {loading ? 'Creating...' : 'Create Invoice'} {/* Change button text when loading */}
       </Button>
 
       <Snackbar

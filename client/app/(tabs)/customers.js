@@ -243,6 +243,16 @@ const Customers = React.memo(() => {
           onPress={() => openEditModal(customer)}
         />
       </DataTable.Cell>
+
+      <DataTable.Cell>
+        <IconButton
+          icon="account"
+          color="#3b82f6"
+          size={20}
+          onPress={() => router.push({ pathname: `customer/${customer.id}`, params: { customerId: customer.id } })}
+
+        />
+      </DataTable.Cell>
     </DataTable.Row>
   );
 
