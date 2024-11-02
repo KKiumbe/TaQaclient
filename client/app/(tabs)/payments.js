@@ -36,6 +36,8 @@ const PaymentScreen = () => {
                 setPayments(data);
                 setOriginalPayments(data);
             }
+
+            console.log(`payment object ${JSON.stringify(payments)}`);
         } catch (error) {
             console.error('Error fetching payments:', error);
             setSnackbarMessage('Error fetching payments.');
@@ -54,24 +56,26 @@ const PaymentScreen = () => {
         fetchPayments().then(() => setRefreshing(false));
     };
 
+  
     const handleSearch = async () => {
         setIsSearching(true);
+        setSearchResults([]); // Clear previous search results
+    
         if (!searchQuery.trim()) {
-            setPayments(originalPayments);
             setIsSearching(false);
             return;
         }
-
+    
         try {
-            const isPhoneNumber = /^\d+$/.test(searchQuery);
-            const response = await axios.get(`${BASEURL}/search-customers`, {
-                params: {
-                    phone: isPhoneNumber ? searchQuery : undefined,
-                    name: !isPhoneNumber ? searchQuery : undefined,
-                },
+            const response = await axios.get(`${BASEURL}/payments-search`, {
+                params: { transactionId: searchQuery }
             });
-
-            setSearchResults(response.data);
+    
+            // Check if response.data is an object (single result) or array, and wrap single object in array
+            const results = Array.isArray(response.data) ? response.data : [response.data];
+            setSearchResults(results);
+            console.log(`search results: ${JSON.stringify(results)}`);
+    
         } catch (error) {
             console.error('Error searching payments:', error);
             setSnackbarMessage('Error searching payments.');
@@ -80,6 +84,8 @@ const PaymentScreen = () => {
             setIsSearching(false);
         }
     };
+    
+
 
     const openModal = () => {
         setModalVisible(true);
@@ -151,7 +157,7 @@ const PaymentScreen = () => {
         <DataTable.Row key={item.id}>
             <DataTable.Cell>KES {item.amount}</DataTable.Cell>
             <DataTable.Cell>{item.modeOfPayment}</DataTable.Cell>
-            <DataTable.Cell>{item.mpesaTransactionId}</DataTable.Cell>
+            <DataTable.Cell>{item.TransactionId}</DataTable.Cell>
             <DataTable.Cell>{item.receipted ? 'Receipted' : 'Not Receipted'}</DataTable.Cell>
             <DataTable.Cell>{item.receipt?.receiptNumber || 'N/A'}</DataTable.Cell>
             <DataTable.Cell>
@@ -161,11 +167,20 @@ const PaymentScreen = () => {
                 <Icon name="pencil" size={24} color="blue" />
             </Pressable>
         )}
+        
+    </View>
+</DataTable.Cell>
+
+
+<DataTable.Cell>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+      
         <Pressable onPress={() => openDetailModal(item)}>
             <Icon name="eye" size={24} color="green" />
         </Pressable>
     </View>
 </DataTable.Cell>
+
 
         </DataTable.Row>
     );
@@ -183,7 +198,7 @@ const PaymentScreen = () => {
 
             {loading && <ActivityIndicator size="large" color="blue" />}
 
-            <ScrollView
+            <View
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
                 }
@@ -200,20 +215,26 @@ const PaymentScreen = () => {
 
 
                     <FlatList
-                    data={searchQuery ? searchResults : payments}
-                    renderItem={RenderPaymentItem}
+                  data={searchQuery ? searchResults : payments} // Display searchResults if a search has been performed
+                                 renderItem={({ item }) => <RenderPaymentItem item={item} />}
                     keyExtractor={(item) => item.id.toString()}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                 />
 
 
 
+
                 </DataTable>
-            </ScrollView>
+            </View>
 
             <Pressable style={styles.fab} onPress={openModal}>
                 <Icon name="plus" size={24} color="white" />
             </Pressable>
+
+
+
+
+            
 
             <Modal
                 animationType="slide"
@@ -234,7 +255,7 @@ const PaymentScreen = () => {
                         />
 
                         <ScrollView style={styles.customerList}>
-                            {searchResults.slice(0, 5).map(customer => (
+                            {searchResults.map(customer => (
                                 <Pressable
                                     key={customer.id}
                                     style={[
@@ -307,10 +328,11 @@ const PaymentScreen = () => {
                             <>
                                 <Text style={styles.modalTitle}>Payment Details</Text>
                                 <Text>Amount: KES {selectedPayment.amount}</Text>
-                                <Text>Transaction ID: {selectedPayment.mpesaTransactionId}</Text>
+                                <Text>Transaction ID: {selectedPayment.TransactionId}</Text>
                                 <Text>Mode of Payment: {selectedPayment.modeOfPayment}</Text>
                                 <Text>Status: {selectedPayment.receipted ? 'Receipted' : 'Not Receipted'}</Text>
                                 <Text>Receipt Number: {selectedPayment.receipt?.receiptNumber || 'N/A'}</Text>
+                                <Text>Payment Reference: {selectedPayment?.Ref || 'N/A'}</Text>
                             </>
                         )}
 

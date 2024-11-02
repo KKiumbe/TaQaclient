@@ -143,10 +143,13 @@ const EditPaymentScreen = () => {
             <Text style={styles.title}>Receipting Payment</Text>
             {payment && (
                 <>
-                    <Text>Transaction ID: {payment.mpesaTransactionId}</Text>
+                    <Text>Transaction ID: {payment.TransactionId}</Text>
                     <Text>Amount: KES {payment.amount}</Text>
                     <Text>Status: {payment.receipted ? 'Receipted' : 'Not Receipted'}</Text>
                     <Text>Time Paid: {payment.createdAt}</Text>
+
+                    <Text>Payment Reference: {payment?.Ref}</Text>
+
                 </>
             )}
 

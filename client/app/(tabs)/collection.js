@@ -1,11 +1,9 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, Modal, TouchableOpacity, Linking, TextInput, ActivityIndicator } from 'react-native';
 import { Button, Menu, Divider, Snackbar } from 'react-native-paper';
 import axios from 'axios';
 
-const BASEURL =process.env.EXPO_PUBLIC_API_URL
+const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
 const CustomerCollectionScreen = () => {
   const [customers, setCustomers] = useState([]);
@@ -22,7 +20,7 @@ const CustomerCollectionScreen = () => {
   const [snackbarVisible, setSnackbarVisible] = useState(false); // Snackbar visibility
   const [snackbarMessage, setSnackbarMessage] = useState(''); // Snackbar message
 
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday','Saturday'];
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   useEffect(() => {
     fetchCustomers();
@@ -49,15 +47,24 @@ const CustomerCollectionScreen = () => {
   };
 
   const handleFilterDay = (day) => {
+    const dayEnumFormat = day.toUpperCase(); // Ensure format matches enum style
     setSelectedDay(day);
-    const filtered = customers.filter(customer => customer.garbageCollectionDay === day.toUpperCase());
+    console.log(`Selected Day: ${day}, Enum Format: ${dayEnumFormat}`);
+  
+    const filtered = customers.filter(customer => {
+      console.log(`Customer Collection Day: ${customer.garbageCollectionDay}`); // Log each customer’s collection day
+      return customer.garbageCollectionDay === dayEnumFormat;
+    });
+  
+    console.log('Filtered Customers:', filtered); // Log filtered results
     setFilteredCustomers(filtered);
     setMenuVisible(false);
   };
+  
 
-  const toggleView = () => {
-    setViewType(viewType === 'list' ? 'map' : 'list');
-  };
+  // const toggleView = () => {
+  //   setViewType(viewType === 'list' ? 'map' : 'list');
+  // };
 
   const handleCustomerPress = (customer) => {
     console.log('Selected customer:', customer); // Debug: log the customer object
@@ -119,19 +126,38 @@ const CustomerCollectionScreen = () => {
   };
   
 
-  const handleSendBulkSMS = () => {
-    const payload = { day: selectedDay, message: smsMessage };
-    axios.post(`${BASEURL}/send-to-group`, payload)
-      .then(() => {
-        setSnackbarMessage('Bulk SMS sent successfully!');
-        setSnackbarVisible(true);
-        setSmsMessage(''); // Clear the input after sending
-      })
-      .catch(error => {
-        setSnackbarMessage('Failed to send bulk SMS.');
-        setSnackbarVisible(true);
+  const handleSendBulkSMS = async () => {
+    // Ensure there is a selected day and message before proceeding
+    if (!selectedDay || !smsMessage) {
+      setSnackbarMessage('Please select a day and enter a message.');
+      setSnackbarVisible(true);
+      return;
+    }
+  
+    // Construct the payload with the required day and message
+    const payload = {
+      day: selectedDay, // Include the selected day
+      message: smsMessage, // Include the SMS message
+    };
+  
+    try {
+      await axios.post(`${BASEURL}/send-to-group`, payload, {
+        headers: {
+          'Content-Type': 'application/json', // Ensure correct content type
+        },
       });
+      setSnackbarMessage('Bulk SMS sent successfully!');
+      setSnackbarVisible(true);
+      setBulkSmsModalVisible(false); // Close the modal after sending
+      setSmsMessage(''); // Clear the input after sending
+    } catch (error) {
+      setSnackbarMessage('Failed to send bulk SMS.');
+      setSnackbarVisible(true);
+      console.error('Error sending bulk SMS:', error);
+    }
   };
+  
+  
 
   const handleCall = () => {
     Linking.openURL(`tel:${selectedCustomer.phoneNumber}`);
@@ -144,27 +170,42 @@ const CustomerCollectionScreen = () => {
       ) : (
         <>
           <Text style={styles.title}>{selectedDay || 'All Days'} collection</Text>
+        
           <View style={styles.buttonRow}>
-            <Button mode="contained" onPress={() => setMenuVisible(true)}>
-              {selectedDay ? `Filter by ${selectedDay}` : 'Filter by Day'}
+
+            <Button mode="contained" onPress={() => setMenuVisible(true)}
+              
+              style={styles.filterbutton}>
+
+              {selectedDay ? ` Filtered: ${selectedDay}` : 'Filter by Day'}
             </Button>
-            <Button mode="contained" onPress={toggleView} style={styles.switchButton}>
-              {viewType === 'list' ? 'Switch to Map View' : 'Switch to List View'}
+            <Button 
+             style={[styles.Button, styles.smallButton]}
+              mode="contained" 
+              onPress={() => setBulkSmsModalVisible(true)} 
+             
+              disabled={!selectedDay || filteredCustomers.length === 0} // Disable if no day is selected or no customers found
+            >
+            <Text style={styles.smallButtonText}>  SMS {selectedDay} customers  </Text>
+             
+             
             </Button>
+
+         
+
+          
           </View>
-          {selectedDay && (
-            <Button mode="contained" onPress={() => setBulkSmsModalVisible(true)} style={styles.bulkSmsButton}>
-              Send SMS to All {selectedDay} clients
-            </Button>
-          )}
+
           <Menu
             visible={menuVisible}
             onDismiss={() => setMenuVisible(false)}
+            anchor={<Button onPress={() => setMenuVisible(true)}>Choose Day</Button>}
           >
             {daysOfWeek.map((day) => (
               <Menu.Item key={day} onPress={() => handleFilterDay(day)} title={day} />
             ))}
           </Menu>
+
           <Divider style={styles.divider} />
           <FlatList
             data={filteredCustomers}
@@ -209,14 +250,13 @@ const CustomerCollectionScreen = () => {
                   onChangeText={setSmsMessage}
                 />
                 <View style={styles.buttonContainer}>
-                <Button 
-  mode="contained" 
-  onPress={() => handleSendSMS(selectedCustomer)} 
-  style={styles.Button}
->
-  Send SMS
-</Button>
-
+                  <Button 
+                    mode="contained" 
+                    onPress={() => handleSendSMS(selectedCustomer)} 
+                    style={styles.Button}
+                  >
+                    Send SMS
+                  </Button>
                   <Button mode="contained" onPress={handleCall} style={styles.Button}>
                     Call
                   </Button>
@@ -241,7 +281,7 @@ const CustomerCollectionScreen = () => {
                 onChangeText={setSmsMessage}
               />
               <View style={styles.buttonContainer}>
-                <Button mode="contained" onPress={() => { handleSendBulkSMS(); setBulkSmsModalVisible(false); }}>
+                <Button mode="contained" onPress={handleSendBulkSMS}>
                   Send Bulk SMS
                 </Button>
                 <Button mode="outlined" onPress={() => setBulkSmsModalVisible(false)}>
@@ -263,9 +303,6 @@ const CustomerCollectionScreen = () => {
   );
 };
 
-
-
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -275,7 +312,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 15,
-    paddingTop:50
+    paddingTop: 50,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -286,6 +323,7 @@ const styles = StyleSheet.create({
   },
   bulkSmsButton: {
     marginVertical: 10,
+    fontSize:5
   },
   listItem: {
     padding: 15,
@@ -336,9 +374,26 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   Button: {
-    padding: 10,
-    marginBottom: 20,
+    padding: 5,
+    marginBottom: 10,
+    marginLeft:5
   },
+
+
+
+  smallButton: {
+    paddingVertical: 5, // Reduced vertical padding for smaller size
+  },
+  smallButtonText: {
+    fontSize: 10, // Reduced text size
+  },
+
+  filterbutton:{
+    padding: 5,
+    marginBottom: 10,
+    marginLeft:5
+
+  }
 });
 
 export default CustomerCollectionScreen;
