@@ -144,7 +144,7 @@ const Customers = React.memo(() => {
       if (selectedCustomer?.firstName) customerData.firstName = selectedCustomer.firstName;
       if (selectedCustomer?.lastName) customerData.lastName = selectedCustomer.lastName;
       if (selectedCustomer?.email) customerData.email = selectedCustomer.email;
-      if (selectedCustomer?.phone) customerData.phoneNumber = selectedCustomer.phone;
+      if (selectedCustomer?.phoneNumber) customerData.phoneNumber = selectedCustomer.phoneNumber;
       if (gender) customerData.gender = gender; // Use current state value
       if (selectedCustomer?.county) customerData.county = selectedCustomer.county;
       if (selectedCustomer?.town) customerData.town = selectedCustomer.town;
@@ -345,8 +345,8 @@ const Customers = React.memo(() => {
             <TextInput
               label="Phone Number"
               mode="outlined"
-              value={selectedCustomer?.phone || ''}
-              onChangeText={(text) => setSelectedCustomer(prev => ({ ...prev, phone: text }))}
+              value={selectedCustomer?.phoneNumber || ''}
+              onChangeText={(text) => setSelectedCustomer(prev => ({ ...prev, phoneNumber: text }))}
               keyboardType='numeric'
               style={styles.input}
             />
