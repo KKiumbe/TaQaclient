@@ -15,7 +15,9 @@ const HomeScreen = () => {
   const [sendingModalVisible, setSendingModalVisible] = useState(false);
   const [sending, setSending] = useState(false);
   const [smsMessage, setSmsMessage] = useState('');
-  const [smsBalance, setSmsBalance] = useState(null); // New state for SMS balance
+  const [smsBalance, setSmsBalance] = useState(null);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [currentCategory, setCurrentCategory] = useState(null); // New state to track the current category
 
   const { currentUser } = useAuthStore();
 
@@ -56,8 +58,6 @@ const HomeScreen = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setSmsBalance(response.data.credit);
-      console.log(response.data);
-      // Assuming API response contains a 'balance' field
     } catch (error) {
       console.error('Error fetching SMS balance:', error);
       Alert.alert('Error', 'Could not fetch SMS balance.');
@@ -66,17 +66,34 @@ const HomeScreen = () => {
 
   useEffect(() => {
     fetchDashboardStats();
-    fetchSmsBalance()
+    fetchSmsBalance();
   }, []);
 
-  // Function to send SMS to all customers
+  const sendSms = async (endpoint) => {
+    setSendingModalVisible(true);
+    setSending(true);
+    setConfirmModalVisible(false);
+
+    try {
+      await axios.post(`${BASEURL}/${endpoint}`, { message: smsMessage });
+      Alert.alert('Success', 'SMS sent successfully.');
+    } catch (error) {
+      console.error(`Failed to send SMS to ${endpoint} customers:`, error);
+      Alert.alert('Error', `Failed to send SMS to ${endpoint} customers.`);
+    } finally {
+      setSending(false);
+      setSendingModalVisible(false);
+      setSmsMessage('');
+    }
+  };
+
   const sendToAll = async () => {
     if (!smsMessage.trim()) {
       Alert.alert('Error', 'Please enter a message to send.');
       return;
     }
 
-    setModalVisible(false); // Close the message input modal
+    setModalVisible(false);
     setSendingModalVisible(true);
     setSending(true);
     try {
@@ -88,55 +105,28 @@ const HomeScreen = () => {
     } finally {
       setSending(false);
       setSendingModalVisible(false);
-      setSmsMessage(''); // Clear message input after sending
+      setSmsMessage('');
     }
   };
 
-  // Function to send SMS to unpaid customers
-  const sendToUnpaid = async () => {
-    setSending(true);
-    setSendingModalVisible(true);
-    try {
-      await axios.post(`${BASEURL}/send-sms-unpaid`);
-      Alert.alert('Success', 'SMS sent to unpaid customers.');
-    } catch (error) {
-      console.error('Failed to send SMS to unpaid customers:', error);
-      Alert.alert('Error', 'Failed to send SMS to unpaid customers.');
-    } finally {
-      setSending(false);
-      setSendingModalVisible(false);
-    }
+  const confirmSend = (category) => {
+    setCurrentCategory(category); // Store the current category
+    setConfirmModalVisible(true); // Show the confirmation modal
+    setModalVisible(false); // Close the message input modal
   };
 
-  // Function to send SMS to low balance customers
-  const sendLowBalance = async () => {
-    setSending(true);
-    setSendingModalVisible(true);
-    try {
-      await axios.post(`${BASEURL}/send-sms-low-balance`);
-      Alert.alert('Success', 'SMS sent to low balance customers.');
-    } catch (error) {
-      console.error('Failed to send SMS to low balance customers:', error);
-      Alert.alert('Error', 'Failed to send SMS to low balance customers.');
-    } finally {
-      setSending(false);
-      setSendingModalVisible(false);
-    }
-  };
-
-  // Function to send SMS to high balance customers
-  const sendHighBalance = async () => {
-    setSending(true);
-    setSendingModalVisible(true);
-    try {
-      await axios.post(`${BASEURL}/send-sms-high-balance`);
-      Alert.alert('Success', 'SMS sent to high balance customers.');
-    } catch (error) {
-      console.error('Failed to send SMS to high balance customers:', error);
-      Alert.alert('Error', 'Failed to send SMS to high balance customers.');
-    } finally {
-      setSending(false);
-      setSendingModalVisible(false);
+  const handleSendConfirmation = () => {
+    setConfirmModalVisible(false);
+    const endpointMap = {
+      unpaid: 'send-sms-unpaid',
+      lowBalance: 'send-sms-low-balance',
+      highBalance: 'send-sms-high-balance',
+    };
+    const endpoint = endpointMap[currentCategory];
+    if (endpoint) {
+      sendSms(endpoint); // Call the sendSms function with the correct endpoint
+    } else {
+      Alert.alert('Error', 'Invalid category selected.');
     }
   };
 
@@ -167,7 +157,6 @@ const HomeScreen = () => {
           Update Profile
         </Button>
 
-
         <Button
           mode="text"
           onPress={fetchSmsBalance}
@@ -196,12 +185,8 @@ const HomeScreen = () => {
                     onPress={() => {
                       if (stat.category === 'all') {
                         setModalVisible(true);
-                      } else if (stat.category === 'unpaid') {
-                        sendToUnpaid();
-                      } else if (stat.category === 'lowBalance') {
-                        sendLowBalance();
-                      } else if (stat.category === 'highBalance') {
-                        sendHighBalance();
+                      } else {
+                        confirmSend(stat.category); // Confirm send for the selected category
                       }
                     }}
                     style={styles.smsButton}
@@ -222,29 +207,57 @@ const HomeScreen = () => {
         ))}
       </ScrollView>
 
-      {/* Modal for "SMS All Customers" with input */}
+      <Modal
+        visible={confirmModalVisible}
+        animationType="slide"
+        onRequestClose={() => setConfirmModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalTitle}>Confirm Send SMS</Text>
+          <Text>Are you sure you want to send this SMS to the selected customers?</Text>
+          <View style={styles.buttonContainer}>
+            <Button
+              mode="contained"
+              onPress={handleSendConfirmation} // Correctly call the send confirmation
+              style={styles.sendButton}
+              disabled={sending}
+            >
+              Confirm
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => setConfirmModalVisible(false)}
+              style={styles.cancelButton}
+            >
+              Cancel
+            </Button>
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={modalVisible}
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Send SMS to All Customers</Text>
+          <Text style={styles.modalTitle}>Send SMS</Text>
           <TextInput
-            style={styles.smsInput}
-            placeholder="Enter your message here..."
+            placeholder="Enter your message here"
+            style={styles.textInput}
             value={smsMessage}
             onChangeText={setSmsMessage}
-            multiline={true}
+            multiline
+            numberOfLines={4}
           />
           <View style={styles.buttonContainer}>
             <Button
               mode="contained"
-              onPress={sendToAll} // Call the sendToAll function directly
+              onPress={sendToAll} // Option to send to all directly
               style={styles.sendButton}
-              disabled={sending}
+              disabled={sending || !smsMessage.trim()}
             >
-              {sending ? <ActivityIndicator size="small" color="#FFFFFF" /> : 'Send SMS'}
+              Send to All
             </Button>
             <Button
               mode="outlined"
@@ -257,17 +270,14 @@ const HomeScreen = () => {
         </View>
       </Modal>
 
-      {/* Sending modal to indicate processing */}
       <Modal
         visible={sendingModalVisible}
         animationType="slide"
-        transparent={true}
+        onRequestClose={() => setSendingModalVisible(false)}
       >
-        <View style={styles.sendingModalContainer}>
-          <View style={styles.sendingModalContent}>
-            <ActivityIndicator size="large" color="#007BFF" />
-            <Text style={styles.sendingText}>Messages are being generated and sent to customers...</Text>
-          </View>
+        <View style={styles.modalContainer}>
+          <ActivityIndicator size="large" color="#007BFF" />
+          <Text>{sending ? 'Sending SMS...' : 'Done!'}</Text>
         </View>
       </Modal>
     </View>
@@ -277,117 +287,86 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#f5f5f5',
+    padding: 16,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
   welcomeMessage: {
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#007BFF',
-    padding: 30,
+    marginBottom: 16,
+    marginTop:50
   },
   updateProfileButton: {
-    marginBottom: 20,
-    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  smsBalanceButton: {
+    marginBottom: 16,
   },
   card: {
-    marginVertical: 10,
     borderWidth: 2,
-    borderRadius: 12,
-    elevation: 4,
-    backgroundColor: '#FFFFFF',
-    padding: 15,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   cardContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  cardText: {
-    flex: 1,
-  },
   cardTitle: {
     fontSize: 18,
-    color: '#555555',
+    fontWeight: 'bold',
   },
   cardValue: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333333',
   },
   smsButton: {
-    marginTop: -30,
-    marginLeft: 10,
-    position: 'absolute',
-    right: -10,
-    top: 10,
+    marginLeft: 8,
   },
   downloadButton: {
-    marginTop: 10,
-    position: 'absolute',
-    right: 0,
-    bottom: 10,
+    marginTop: 16,
   },
   divider: {
-    marginVertical: 10,
-    backgroundColor: '#CCCCCC',
+    height: 1,
+    backgroundColor: '#ccc',
+    marginVertical: 8,
   },
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
   },
-  smsInput: {
+  textInput: {
+    width: '100%',
     height: 100,
-    borderColor: '#CCCCCC',
+    borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 5,
+    borderRadius: 8,
     padding: 10,
     marginBottom: 20,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
   },
   sendButton: {
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   cancelButton: {
     flex: 1,
-  },
-  sendingModalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // semi-transparent background
-  },
-  sendingModalContent: {
-    width: 300,
-    padding: 20,
-    backgroundColor: 'white',
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  sendingText: {
-    marginTop: 10,
-    textAlign: 'center',
-    color: '#333333',
+    marginLeft: 8,
   },
 });
 

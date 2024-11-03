@@ -96,6 +96,8 @@ const EditPaymentScreen = () => {
             modeOfPayment,
             paidBy: `${selectedCustomer.firstName}`,
         };
+
+        console.log(`this is payment payload ${JSON.stringify(receiptPayload)}`);
     
         setReceiptLoading(true);
         try {
