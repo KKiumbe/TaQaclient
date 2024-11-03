@@ -51,7 +51,7 @@ const InvoiceDetails = () => {
   // Set the page title when the component mounts
   useEffect(() => {
     if (invoice) {
-      const title = `Invoice Details - ${invoice.invoiceNumber}`; // Customize this based on your logic
+      const title = `${invoice.customer.firstName}`; // Customize this based on your logic
       navigation.setOptions({ title }); // Set the title using the navigation object
     }
   }, [invoice]);

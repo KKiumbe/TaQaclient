@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Pressable, FlatList, Modal, Button, Alert } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import axios from 'axios';
 import { Searchbar } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
@@ -21,6 +21,8 @@ const EditPaymentScreen = () => {
     const [receiptDetails, setReceiptDetails] = useState(null);
 
     const BASEURL =process.env.EXPO_PUBLIC_API_URL
+
+    const navigation = useNavigation();
 
 
     useEffect(() => {
@@ -43,6 +45,14 @@ const EditPaymentScreen = () => {
 
         fetchPayment();
     }, [paymentId]);
+
+
+    useEffect(() => {
+        if (payment) {
+          const title = `${payment?.TransactionId}`; // Customize this based on your logic
+          navigation.setOptions({ title }); // Set the title using the navigation object
+        }
+      }, [payment]);
 
     const handleSearch = async () => {
         setSearchLoading(true);

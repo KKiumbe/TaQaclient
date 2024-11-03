@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import axios from 'axios';
 
 const ReceiptScreen = () => {
@@ -10,6 +10,8 @@ const ReceiptScreen = () => {
     const [error, setError] = useState(null);
 
     const BASEURL =process.env.EXPO_PUBLIC_API_URL
+
+    const navigation = useNavigation();
 
 
     // Fetch receipt details when the screen loads
@@ -35,6 +37,14 @@ const ReceiptScreen = () => {
 
         fetchReceipt();
     }, [receiptId]);
+
+
+    useEffect(() => {
+        if (receipt) {
+          const title = `${receipt.customer?.firstName}`; // Customize this based on your logic
+          navigation.setOptions({ title }); // Set the title using the navigation object
+        }
+      }, [receipt]);
 
     if (loading) {
         return <ActivityIndicator size="large" color="#0000ff" />;

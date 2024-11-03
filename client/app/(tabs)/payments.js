@@ -56,26 +56,24 @@ const PaymentScreen = () => {
         fetchPayments().then(() => setRefreshing(false));
     };
 
-  
     const handleSearch = async () => {
         setIsSearching(true);
-        setSearchResults([]); // Clear previous search results
-    
         if (!searchQuery.trim()) {
+            setPayments(originalPayments);
             setIsSearching(false);
             return;
         }
-    
+
         try {
-            const response = await axios.get(`${BASEURL}/payments-search`, {
-                params: { transactionId: searchQuery }
+            const isPhoneNumber = /^\d+$/.test(searchQuery);
+            const response = await axios.get(`${BASEURL}/search-customers`, {
+                params: {
+                    phone: isPhoneNumber ? searchQuery : undefined,
+                    name: !isPhoneNumber ? searchQuery : undefined,
+                },
             });
-    
-            // Check if response.data is an object (single result) or array, and wrap single object in array
-            const results = Array.isArray(response.data) ? response.data : [response.data];
-            setSearchResults(results);
-            console.log(`search results: ${JSON.stringify(results)}`);
-    
+
+            setSearchResults(response.data);
         } catch (error) {
             console.error('Error searching payments:', error);
             setSnackbarMessage('Error searching payments.');
@@ -84,8 +82,6 @@ const PaymentScreen = () => {
             setIsSearching(false);
         }
     };
-    
-
 
     const openModal = () => {
         setModalVisible(true);

@@ -411,9 +411,11 @@ const Customers = React.memo(() => {
               onValueChange={(itemValue) => setCategory(itemValue)}
               style={styles.input}
             >
-              <Picker.Item label="Residential" value="residential" />
-              <Picker.Item label="Commercial" value="commercial" />
-              <Picker.Item label="Industrial" value="industrial" />
+              <Picker.Item label="Own Compound Home" value="Own_Compound" />
+              <Picker.Item label="Apartment" value="Apartment" />
+              <Picker.Item label="Business" value="Business" />
+              <Picker.Item label="Restaurant" value="Restaurant" />
+              <Picker.Item label="Institution" value="Institution" />
             </Picker>
             <TextInput
               label="Monthly Charge"
@@ -431,13 +433,14 @@ const Customers = React.memo(() => {
               keyboardType='numeric'
               style={styles.input}
             />
+            <Text>Customer Status</Text>
             <Picker
               selectedValue={status}
               onValueChange={(itemValue) => setStatus(itemValue)}
               style={styles.input}
             >
               <Picker.Item label="ACTIVE" value="ACTIVE" />
-              <Picker.Item label="INACTIVE" value="INACTIVE" />
+              <Picker.Item label="INACTIVE" value="DORMANT" />
             </Picker>
             <View style={styles.checkboxContainer}>
               <Checkbox
@@ -508,7 +511,7 @@ const Customers = React.memo(() => {
           
                 <Text>Location: {selectedCustomer.location || 'N/A'}</Text>
                 <Text>Category: {selectedCustomer.category}</Text>
-                <Text>Status: {selectedCustomer.status}</Text>
+                <Text  style={styles.closingBalance}>Status: {selectedCustomer.status}</Text>
                 <Text>Monthly Charge: {selectedCustomer.monthlyCharge}</Text>
                 <Text  style={styles.closingBalance}>Closing Balance: {selectedCustomer.closingBalance}</Text>
                 <Text>Collected: {selectedCustomer.collected ? 'Yes' : 'No'}</Text>
