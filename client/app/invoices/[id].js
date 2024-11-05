@@ -4,20 +4,21 @@ import { Text, DataTable, Snackbar, Button } from 'react-native-paper';
 import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
 
-const BASEURL ="http://212.47.74.158:5000/api"
+const BASEURL = "http://212.47.74.158:5000/api";
 
 const InvoiceDetails = () => {
   const route = useRoute();
-  const navigation = useNavigation(); // Use useNavigation to get the navigation object
+  const navigation = useNavigation();
 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
-  // Extract the invoice ID from the route parameters
   const { id } = route.params;
 
   const fetchInvoiceDetails = async () => {
@@ -48,13 +49,48 @@ const InvoiceDetails = () => {
     fetchInvoiceDetails();
   }, [id]);
 
-  // Set the page title when the component mounts
   useEffect(() => {
     if (invoice) {
-      const title = `${invoice.customer.firstName}`; // Customize this based on your logic
-      navigation.setOptions({ title }); // Set the title using the navigation object
+      const title = `${invoice.customer.firstName}`;
+      navigation.setOptions({ title });
     }
   }, [invoice]);
+
+  const handleDownloadInvoice = async () => {
+    const token = await AsyncStorage.getItem('user');
+    try {
+      const downloadPath = FileSystem.documentDirectory + `invoice-${id}.pdf`;
+  
+      const response = await axios.get(`${BASEURL}/download-invoice/${id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: 'blob',
+      });
+  
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(response.data);
+      });
+  
+      await FileSystem.writeAsStringAsync(downloadPath, base64.split(',')[1], {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+  
+      setSnackbarMessage('Invoice downloaded successfully.');
+      setSnackbarOpen(true);
+      console.log('Invoice saved to:', downloadPath);
+      
+      await Sharing.shareAsync(downloadPath); // Open the downloaded PDF
+
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      setSnackbarMessage('Failed to download invoice. Please try again.');
+      setSnackbarOpen(true);
+    }
+  };
 
   const handleCancelInvoice = async () => {
     const token = await AsyncStorage.getItem('user');
@@ -64,7 +100,7 @@ const InvoiceDetails = () => {
       });
       setSnackbarMessage(response.data.message);
       setSnackbarOpen(true);
-      fetchInvoiceDetails(); // Refetch to get the updated invoice state
+      fetchInvoiceDetails();
     } catch (error) {
       setSnackbarMessage('Failed to cancel invoice. Please try again.');
       setSnackbarOpen(true);
@@ -85,7 +121,19 @@ const InvoiceDetails = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Invoice Details</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Invoice Details</Text>
+        
+        {/* Download Invoice Button */}
+        <Button 
+          mode="outlined" 
+          onPress={handleDownloadInvoice} 
+          style={styles.downloadButton}
+          disabled={invoice.status === "CANCELLED"} // Disable button if invoice is cancelled
+        >
+          Download PDF
+        </Button>
+      </View>
       
       {/* Invoice Info */}
       <Text style={styles.subtitle}>Invoice Number: {invoice.invoiceNumber}</Text>
@@ -97,7 +145,6 @@ const InvoiceDetails = () => {
       <Text>Created At: {new Date(invoice.createdAt).toLocaleDateString()}</Text>
       <Text>Invoice Period: {new Date(invoice.invoicePeriod).toLocaleDateString()}</Text>
       
-      {/* Indicate if the invoice is system-generated or user-generated */}
       <Text style={styles.subtitle}>
         Type: {invoice.isSystemGenerated ? 'System Generated' : 'User Generated'}
       </Text>
@@ -157,11 +204,18 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: '#f5f5f5',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
     color: '#673ab7',
+  },
+  downloadButton: {
+    marginLeft: 'auto',
   },
   subtitle: {
     fontSize: 15,
