@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
 import { useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
@@ -21,11 +21,7 @@ const CustomerDetailsPage = () => {
     const fetchCustomerDetails = async () => {
       try {
         const response = await axios.get(`${BASEURL}/customer-details/${customerId}`);
-
         setCustomerData(response.data);
-       
-        
-
         console.log('Fetched customer data:', response.data);
       } catch (error) {
         console.error('Error fetching customer data:', error);
@@ -36,7 +32,6 @@ const CustomerDetailsPage = () => {
 
     fetchCustomerDetails();
   }, [customerId]);
-
 
   useEffect(() => {
     if (customerData) {
@@ -53,7 +48,15 @@ const CustomerDetailsPage = () => {
     return <Text style={styles.message}>No customer data found.</Text>;
   }
 
-
+  const sendCurrentBill = async () => {
+    try {
+      const response = await axios.post(`${BASEURL}/send-bill`, { customerId });
+      Alert.alert('Success', 'Bill sent successfully!');
+    } catch (error) {
+      console.error('Error sending bill:', error);
+      Alert.alert('Error', 'Failed to send bill.');
+    }
+  };
 
   const renderCustomerDetails = () => (
     <View style={styles.card}>
@@ -70,6 +73,9 @@ const CustomerDetailsPage = () => {
       <Text>Collection Day: {customerData?.garbageCollectionDay}</Text>
       <Text>Collected: {customerData?.collected ? 'Yes' : 'No'}</Text>
       <Text>Closing Balance: ${customerData?.closingBalance}</Text>
+      <TouchableOpacity style={styles.sendBillButton} onPress={sendCurrentBill}>
+        <Text style={styles.sendBillButtonText}>Send Current Bill</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -89,7 +95,6 @@ const CustomerDetailsPage = () => {
       ))}
     </View>
   );
-
 
   const renderReceiptItem = ({ item }) => (
     <View style={styles.card}>
@@ -112,8 +117,6 @@ const CustomerDetailsPage = () => {
       )}
     </View>
   );
-  
-
 
   const renderPaymentItem = ({ item }) => (
     <View style={styles.card}>
@@ -123,7 +126,6 @@ const CustomerDetailsPage = () => {
       <Text>Created At: {new Date(item.payment?.createdAt).toLocaleDateString()}</Text> {/* Accessing payment date */}
     </View>
   );
-  
 
   const renderInvoicesSection = () => (
     <>
@@ -266,6 +268,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     color: '#c62828',
+  },
+  sendBillButton: {
+    backgroundColor: '#00796b',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  sendBillButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 

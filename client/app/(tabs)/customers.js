@@ -462,14 +462,7 @@ const Customers = React.memo(() => {
               <Picker.Item label="Friday" value="FRIDAY" />
               <Picker.Item label="Saturday" value="SATURDAY" />
             </Picker>
-            <TextInput
-  label="Closing Balance"
-  mode="outlined"
-  value={selectedCustomer?.closingBalance?.toString() || '0'}
-  onChangeText={(text) => setSelectedCustomer(prev => ({ ...prev, closingBalance: text }))}
-  keyboardType="numeric"
-  style={styles.modalInput}
-/>
+
             {selectedCustomer?.location && (
               <Text style={styles.locationOutput}>
                 Coordinates: {selectedCustomer.location.latitude}, {selectedCustomer.location.longitude}

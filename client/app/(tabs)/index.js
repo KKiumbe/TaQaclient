@@ -5,8 +5,13 @@ import { router } from 'expo-router';
 import useAuthStore from '../../store/authStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import base64 from 'base-64';
 
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
+
+
 
 const HomeScreen = () => {
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -17,7 +22,9 @@ const HomeScreen = () => {
   const [smsMessage, setSmsMessage] = useState('');
   const [smsBalance, setSmsBalance] = useState(null);
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
-  const [currentCategory, setCurrentCategory] = useState(null); // New state to track the current category
+  const [currentCategory, setCurrentCategory] = useState(null);
+  const [downloadingReport, setDownloadingReport] = useState(false); // Track download state
+
 
   const { currentUser } = useAuthStore();
 
@@ -40,7 +47,6 @@ const HomeScreen = () => {
       setDashboardStats(response.data.data);
     } catch (error) {
       if (error.response?.status === 401) {
-        console.warn('Unauthorized! Redirecting to login.');
         await AsyncStorage.removeItem('user');
         router.push('login');
       } else {
@@ -59,7 +65,6 @@ const HomeScreen = () => {
       });
       setSmsBalance(response.data.credit);
     } catch (error) {
-      console.error('Error fetching SMS balance:', error);
       Alert.alert('Error', 'Could not fetch SMS balance.');
     }
   };
@@ -78,7 +83,6 @@ const HomeScreen = () => {
       await axios.post(`${BASEURL}/${endpoint}`, { message: smsMessage });
       Alert.alert('Success', 'SMS sent successfully.');
     } catch (error) {
-      console.error(`Failed to send SMS to ${endpoint} customers:`, error);
       Alert.alert('Error', `Failed to send SMS to ${endpoint} customers.`);
     } finally {
       setSending(false);
@@ -100,7 +104,6 @@ const HomeScreen = () => {
       await axios.post(`${BASEURL}/send-to-all`, { message: smsMessage });
       Alert.alert('Success', `SMS sent to all customers.`);
     } catch (error) {
-      console.error('Failed to send SMS to all customers:', error);
       Alert.alert('Error', `Failed to send SMS to all customers.`);
     } finally {
       setSending(false);
@@ -110,9 +113,9 @@ const HomeScreen = () => {
   };
 
   const confirmSend = (category) => {
-    setCurrentCategory(category); // Store the current category
-    setConfirmModalVisible(true); // Show the confirmation modal
-    setModalVisible(false); // Close the message input modal
+    setCurrentCategory(category);
+    setConfirmModalVisible(true);
+    setModalVisible(false);
   };
 
   const handleSendConfirmation = () => {
@@ -124,15 +127,70 @@ const HomeScreen = () => {
     };
     const endpoint = endpointMap[currentCategory];
     if (endpoint) {
-      sendSms(endpoint); // Call the sendSms function with the correct endpoint
+      sendSms(endpoint);
     } else {
       Alert.alert('Error', 'Invalid category selected.');
     }
   };
 
-  const handleDownloadReport = () => {
-    console.log('Download report');
+  
+  const handleDownloadReport = async (reportType) => {
+    const endpointMap = {
+      all: 'customers',
+      unpaid: 'customers-debt',
+      lowBalance: 'customers-debt-low',
+      highBalance: 'customers-debt-high',
+    };
+  
+    const endpoint = endpointMap[reportType];
+    const fullUrl = `${BASEURL}/reports/${endpoint}`;
+  
+    console.log(`Requesting Report URL: ${fullUrl}`);
+  
+    try {
+      setDownloadingReport(true); // Start downloading
+
+      const token = await AsyncStorage.getItem('user');
+      const downloadPath = FileSystem.documentDirectory + `invoice-${reportType}.pdf`;
+  
+      // Fetch the report from the API
+      const response = await axios.get(fullUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        responseType: 'arraybuffer', // Ensure we get binary data
+      });
+  
+      // Convert the ArrayBuffer to a Base64-encoded string (in smaller chunks)
+      const uint8Array = new Uint8Array(response.data);
+      let binaryString = '';
+      for (let i = 0; i < uint8Array.length; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+      }
+  
+      const base64Data = base64.encode(binaryString);
+  
+      // Write the Base64 string to the file system
+      await FileSystem.writeAsStringAsync(downloadPath, base64Data, {
+        encoding: FileSystem.EncodingType.Base64, // Write as Base64
+      });
+  
+      // Share the file
+      await Sharing.shareAsync(downloadPath);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to download and share the report.');
+      console.error('Error downloading report:', error);
+    }
+    finally{
+      setDownloadingReport(false); // Start downloading
+
+    }
   };
+  
+  
+  
+
+  
 
   if (loading) {
     return (
@@ -149,19 +207,11 @@ const HomeScreen = () => {
           Welcome {currentUser?.firstName || 'User'}!
         </Text>
 
-        <Button
-          mode="outlined"
-          onPress={() => router.navigate('/profile')}
-          style={styles.updateProfileButton}
-        >
+        <Button mode="outlined" onPress={() => router.navigate('/profile')} style={styles.updateProfileButton}>
           Update Profile
         </Button>
 
-        <Button
-          mode="text"
-          onPress={fetchSmsBalance}
-          style={styles.smsBalanceButton}
-        >
+        <Button mode="text" onPress={fetchSmsBalance} style={styles.smsBalanceButton}>
           {smsBalance !== null ? `SMS Balance: ${smsBalance}` : 'Check SMS Balance'}
         </Button>
 
@@ -186,7 +236,7 @@ const HomeScreen = () => {
                       if (stat.category === 'all') {
                         setModalVisible(true);
                       } else {
-                        confirmSend(stat.category); // Confirm send for the selected category
+                        confirmSend(stat.category);
                       }
                     }}
                     style={styles.smsButton}
@@ -194,12 +244,21 @@ const HomeScreen = () => {
                     Send SMS
                   </Button>
                 </View>
+                
                 <Button
                   mode="outlined"
                   icon="download"
-                  onPress={handleDownloadReport}
+                  onPress={() => handleDownloadReport(stat.category)}
                   style={styles.downloadButton}
-                />
+                  disabled={downloadingReport} // Disable download button when downloading
+                >
+                  {downloadingReport ? (
+                    <ActivityIndicator size="small" color="#007BFF" />
+                  ) : (
+                    'Download Report'
+                  )}
+                </Button>
+
               </Card.Content>
             </Card>
             <Divider style={styles.divider} />
@@ -207,39 +266,22 @@ const HomeScreen = () => {
         ))}
       </ScrollView>
 
-      <Modal
-        visible={confirmModalVisible}
-        animationType="slide"
-        onRequestClose={() => setConfirmModalVisible(false)}
-      >
+      <Modal visible={confirmModalVisible} animationType="slide" onRequestClose={() => setConfirmModalVisible(false)}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Confirm Send SMS</Text>
           <Text>Are you sure you want to send this SMS to the selected customers?</Text>
           <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={handleSendConfirmation} // Correctly call the send confirmation
-              style={styles.sendButton}
-              disabled={sending}
-            >
+            <Button mode="contained" onPress={handleSendConfirmation} style={styles.sendButton} disabled={sending}>
               Confirm
             </Button>
-            <Button
-              mode="outlined"
-              onPress={() => setConfirmModalVisible(false)}
-              style={styles.cancelButton}
-            >
+            <Button mode="outlined" onPress={() => setConfirmModalVisible(false)} style={styles.cancelButton}>
               Cancel
             </Button>
           </View>
         </View>
       </Modal>
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal visible={modalVisible} animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalContainer}>
           <Text style={styles.modalTitle}>Send SMS</Text>
           <TextInput
@@ -251,33 +293,20 @@ const HomeScreen = () => {
             numberOfLines={4}
           />
           <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={sendToAll} // Option to send to all directly
-              style={styles.sendButton}
-              disabled={sending || !smsMessage.trim()}
-            >
+            <Button mode="contained" onPress={sendToAll} style={styles.sendButton} disabled={sending || !smsMessage.trim()}>
               Send to All
             </Button>
-            <Button
-              mode="outlined"
-              onPress={() => setModalVisible(false)}
-              style={styles.cancelButton}
-            >
+            <Button mode="outlined" onPress={() => setModalVisible(false)} style={styles.cancelButton}>
               Cancel
             </Button>
           </View>
         </View>
       </Modal>
 
-      <Modal
-        visible={sendingModalVisible}
-        animationType="slide"
-        onRequestClose={() => setSendingModalVisible(false)}
-      >
+      <Modal visible={sendingModalVisible} animationType="slide" onRequestClose={() => setSendingModalVisible(false)}>
         <View style={styles.modalContainer}>
           <ActivityIndicator size="large" color="#007BFF" />
-          <Text>{sending ? 'Sending SMS...' : 'Done!'}</Text>
+          <Text style={styles.sendingText}>Sending SMS...</Text>
         </View>
       </Modal>
     </View>
@@ -285,89 +314,25 @@ const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  welcomeMessage: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    marginTop:50
-  },
-  updateProfileButton: {
-    marginBottom: 16,
-  },
-  smsBalanceButton: {
-    marginBottom: 16,
-  },
-  card: {
-    borderWidth: 2,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  cardValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  smsButton: {
-    marginLeft: 8,
-  },
-  downloadButton: {
-    marginTop: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ccc',
-    marginVertical: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  textInput: {
-    width: '100%',
-    height: 100,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  sendButton: {
-    flex: 1,
-    marginRight: 8,
-  },
-  cancelButton: {
-    flex: 1,
-    marginLeft: 8,
-  },
+  container: { flex: 1, padding: 16 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  welcomeMessage: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, marginTop: 50 },
+  updateProfileButton: { marginBottom: 16 },
+  smsBalanceButton: { marginBottom: 16 },
+  card: { borderWidth: 2, borderRadius: 8, marginBottom: 16 },
+  cardContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardTitle: { fontSize: 18, fontWeight: 'bold' },
+  cardValue: { fontSize: 24, fontWeight: 'bold' },
+  smsButton: { marginLeft: 8 },
+  downloadButton: { marginTop: 16 },
+  divider: { height: 1, backgroundColor: '#ccc', marginVertical: 8 },
+  modalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
+  textInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 12, width: '100%', marginBottom: 16 },
+  buttonContainer: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' },
+  sendButton: { backgroundColor: '#007BFF', marginHorizontal: 5 },
+  cancelButton: { marginHorizontal: 5 },
+  sendingText: { marginTop: 16, fontSize: 18, fontWeight: 'bold' },
 });
 
 export default HomeScreen;
