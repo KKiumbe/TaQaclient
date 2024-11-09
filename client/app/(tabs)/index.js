@@ -59,6 +59,9 @@ const HomeScreen = () => {
 
   const fetchSmsBalance = async () => {
     try {
+
+   // Start downloading for the specific report type
+
       const token = await AsyncStorage.getItem('user');
       const response = await axios.get(`${BASEURL}/get-sms-balance`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -148,7 +151,8 @@ const HomeScreen = () => {
     console.log(`Requesting Report URL: ${fullUrl}`);
   
     try {
-      setDownloadingReport(true); // Start downloading
+
+      setDownloadingReport((prev) => ({ ...prev, [reportType]: true })); 
 
       const token = await AsyncStorage.getItem('user');
       const downloadPath = FileSystem.documentDirectory + `invoice-${reportType}.pdf`;
@@ -182,7 +186,7 @@ const HomeScreen = () => {
       console.error('Error downloading report:', error);
     }
     finally{
-      setDownloadingReport(false); // Start downloading
+      setDownloadingReport((prev) => ({ ...prev, [reportType]: false })); // Stop downloading for the specific report type
 
     }
   };
@@ -246,24 +250,28 @@ const HomeScreen = () => {
                 </View>
                 
                 <Button
-                  mode="outlined"
                   icon="download"
                   onPress={() => handleDownloadReport(stat.category)}
                   style={styles.downloadButton}
-                  disabled={downloadingReport} // Disable download button when downloading
+                  disabled={downloadingReport[stat.category]} // Disable only the button that is downloading
                 >
-                  {downloadingReport ? (
+                  {downloadingReport[stat.category] ? (
                     <ActivityIndicator size="small" color="#007BFF" />
                   ) : (
                     'Download Report'
                   )}
                 </Button>
 
+
               </Card.Content>
             </Card>
             <Divider style={styles.divider} />
           </View>
         ))}
+
+    <Button mode="outlined" onPress={() => router.navigate('/smsDelivery/delivery')} style={styles.updateProfileButton}>
+          SMS Delivery Statistics 
+        </Button>
       </ScrollView>
 
       <Modal visible={confirmModalVisible} animationType="slide" onRequestClose={() => setConfirmModalVisible(false)}>

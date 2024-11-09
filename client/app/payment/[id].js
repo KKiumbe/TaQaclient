@@ -45,7 +45,7 @@ const EditPaymentScreen = () => {
 
         fetchPayment();
     }, [paymentId]);
-
+ 
 
     useEffect(() => {
         if (payment) {
@@ -53,6 +53,8 @@ const EditPaymentScreen = () => {
           navigation.setOptions({ title }); // Set the title using the navigation object
         }
       }, [payment]);
+
+      
 
     const handleSearch = async () => {
         setSearchLoading(true);
