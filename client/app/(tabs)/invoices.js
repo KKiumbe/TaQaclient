@@ -233,7 +233,7 @@ const InvoiceScreen = () => {
           onPress={() => handleStatusFilter('PPAID')}
           style={[styles.filterButton, statusFilter === 'PPAID' && styles.activeFilter]}
         >
-          Partially Paid
+          PP
         </Button>
       </View>
 

@@ -10,23 +10,26 @@ const SmsHistoryPage = () => {
   const navigation = useNavigation();
   const [smsData, setSmsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSms, setSelectedSms] = useState(null);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   useEffect(() => {
-    // Set the screen title to "Sent SMS"
     navigation.setOptions({ title: 'Sent SMS' });
   }, [navigation]);
 
-  const fetchSmsData = async (currentPage = 1) => {
+  const fetchSmsData = async (currentPage = 1, append = false) => {
     setLoading(true);
     try {
       const response = await axios.get(`${BASEURL}/sms-history?page=${currentPage}`);
-      setSmsData(response.data.data);
+      const newData = response.data.data;
+      setSmsData((prevData) => (append ? [...prevData, ...newData] : newData));
       setTotalPages(Math.ceil(response.data.total / 10));
       setLoading(false);
+      setInitialLoad(false);
     } catch (error) {
       console.error('Error fetching SMS data:', error);
       setLoading(false);
@@ -34,12 +37,25 @@ const SmsHistoryPage = () => {
   };
 
   useEffect(() => {
-    fetchSmsData(page);
+    fetchSmsData(page, page > 1);
   }, [page]);
 
-  const shortenMessage = (message) => message.length > 3 ? message.slice(0, 3) + '...' : message;
-  const shortenPhone = (phone) => phone.length > 5 ? phone.slice(0, 5) : phone;
-  const shortenDate = (date) => date.length > 3 ? date.slice(0, 3) + '...' : date;
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setPage(1); // Reset to the first page
+    await fetchSmsData(1); // Fetch the first page of data
+    setRefreshing(false);
+  };
+
+  const loadMoreData = () => {
+    if (page < totalPages) {
+      setPage((prevPage) => prevPage + 1);
+    }
+  };
+
+  const shortenMessage = (message) => (message.length > 3 ? message.slice(0, 3) + '...' : message);
+  const shortenPhone = (phone) => (phone.length > 5 ? phone.slice(0, 5) : phone);
+  const shortenDate = (date) => (date.length > 3 ? date.slice(0, 3) + '...' : date);
 
   const openModal = (item) => {
     setSelectedSms(item);
@@ -58,14 +74,6 @@ const SmsHistoryPage = () => {
     </TouchableOpacity>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#6200EE" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>SMS History</Text>
@@ -82,30 +90,15 @@ const SmsHistoryPage = () => {
         <FlatList
           data={smsData}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           ListEmptyComponent={<Text style={styles.emptyText}>No SMS messages found.</Text>}
+          onEndReached={loadMoreData}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={loading && !initialLoad && <ActivityIndicator size="small" color="#6200EE" />}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
         />
       </DataTable>
-
-      <View style={styles.paginationContainer}>
-        <Button
-          mode="contained"
-          onPress={() => setPage(page > 1 ? page - 1 : 1)}
-          disabled={page === 1}
-          style={styles.paginationButton}
-        >
-          Previous
-        </Button>
-        <Text style={styles.paginationText}>Page {page} of {totalPages}</Text>
-        <Button
-          mode="contained"
-          onPress={() => setPage(page < totalPages ? page + 1 : totalPages)}
-          disabled={page === totalPages}
-          style={styles.paginationButton}
-        >
-          Next
-        </Button>
-      </View>
 
       {selectedSms && (
         <Modal
@@ -154,21 +147,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#888',
     marginTop: 20,
-  },
-  paginationContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  paginationText: {
-    fontSize: 16,
-    color: '#6200EE',
-    fontWeight: 'bold',
-  },
-  paginationButton: {
-    flex: 1,
-    marginHorizontal: 8,
   },
   modalOverlay: {
     flex: 1,

@@ -32,6 +32,8 @@ const PaymentScreen = () => {
         try {
             const response = await fetch(`${BASEURL}/payments`);
             const data = await response.json();
+            console.log(JSON.stringify(data));
+
             if (Array.isArray(data)) {
                 setPayments(data);
                 setOriginalPayments(data);
@@ -154,6 +156,7 @@ const PaymentScreen = () => {
             <DataTable.Cell>KES {item.amount}</DataTable.Cell>
             <DataTable.Cell>{item.modeOfPayment}</DataTable.Cell>
             <DataTable.Cell>{item.TransactionId}</DataTable.Cell>
+            <DataTable.Cell>{item.firstName}</DataTable.Cell>
             <DataTable.Cell>{item.receipted ? 'Receipted' : 'Not Receipted'}</DataTable.Cell>
             <DataTable.Cell>{item.receipt?.receiptNumber || 'N/A'}</DataTable.Cell>
             <DataTable.Cell>
@@ -323,6 +326,7 @@ const PaymentScreen = () => {
                         {selectedPayment && (
                             <>
                                 <Text style={styles.modalTitle}>Payment Details</Text>
+                                <Text>Name:{selectedPayment.firstName}</Text>
                                 <Text>Amount: KES {selectedPayment.amount}</Text>
                                 <Text>Transaction ID: {selectedPayment.TransactionId}</Text>
                                 <Text>Mode of Payment: {selectedPayment.modeOfPayment}</Text>

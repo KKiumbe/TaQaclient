@@ -3,8 +3,7 @@ import { View, ActivityIndicator, Text, StyleSheet, FlatList, TouchableOpacity, 
 import axios from 'axios';
 import { useRoute } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
-import { MaterialIcons } from '@expo/vector-icons'; // Importing Material Icons for the message icon
-
+import { MaterialIcons } from '@expo/vector-icons';
 
 const BASEURL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -15,10 +14,12 @@ const CustomerDetailsPage = () => {
 
   const [customerData, setCustomerData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [smsMessage, setSmsMessage] = useState(''); // To hold the SMS message content
+  const [smsMessage, setSmsMessage] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [receiptVisible, setReceiptVisible] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
 
   useEffect(() => {
     const fetchCustomerDetails = async () => {
@@ -57,23 +58,17 @@ const CustomerDetailsPage = () => {
         return;
       }
 
-      const response = await axios.post(
-        `${BASEURL}/send-sms`,
-        {
-          mobile: selectedCustomer.phoneNumber,
-          message: smsMessage,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const response = await axios.post(`${BASEURL}/send-sms`, {
+        mobile: selectedCustomer.phoneNumber,
+        message: smsMessage,
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+      });
 
       setSnackbarMessage('SMS sent successfully!');
       setSnackbarVisible(true);
-      setModalVisible(false); // Close modal after sending
-      setSmsMessage(''); // Clear the input after sending
+      setModalVisible(false);
+      setSmsMessage('');
     } catch (error) {
       console.error('Error sending SMS:', error.response?.data || error.message);
       setSnackbarMessage('Failed to send SMS.');
@@ -83,7 +78,7 @@ const CustomerDetailsPage = () => {
 
   const sendCurrentBill = async () => {
     try {
-      const response = await axios.post(`${BASEURL}/send-bill`, { customerId });
+      await axios.post(`${BASEURL}/send-bill`, { customerId });
       Alert.alert('Success', 'Bill sent successfully!');
     } catch (error) {
       console.error('Error sending bill:', error);
@@ -109,15 +104,31 @@ const CustomerDetailsPage = () => {
     </View>
   );
 
-  const renderInvoiceItem = ({ item }) => (
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>Invoice #: {item?.invoiceNumber}</Text>
-      <Text>Amount: ${item?.invoiceAmount}</Text>
-      <Text>Status: {item?.status}</Text>
-      <Text>Created At: {new Date(item?.createdAt).toLocaleDateString()}</Text>
-      <Text>Closing Balance: ${item?.closingBalance}</Text>
-    </View>
-  );
+  const renderInvoiceItem = ({ item }) => {
+    // Check if the invoice has any associated receipts
+    const hasReceipts = item?.receiptInvoices?.length > 0;
+
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Invoice #: {item?.invoiceNumber}</Text>
+        <Text>Amount: ${item?.invoiceAmount}</Text>
+        <Text>Status: {item?.status}</Text>
+        <Text>Created At: {new Date(item?.createdAt).toLocaleDateString()}</Text>
+        <Text>Closing Balance: ${item?.closingBalance}</Text>
+
+        {/* Show "View Receipt" button if the invoice has receipts and is paid */}
+        {hasReceipts && (item?.status === 'PAID' || item?.status === 'PPAID') && (
+          <Button
+            title="View Receipt"
+            onPress={() => {
+              setSelectedInvoice(item);
+              setReceiptVisible(true);
+            }}
+          />
+        )}
+      </View>
+    );
+  };
 
   const renderInvoicesSection = () => (
     <>
@@ -131,50 +142,25 @@ const CustomerDetailsPage = () => {
     </>
   );
 
-  const data = [
-    { type: 'customerDetails' },
-    { type: 'invoices' },
-  ];
-
-  const renderItem = ({ item }) => {
-    switch (item.type) {
-      case 'customerDetails':
-        return renderCustomerDetails();
-      case 'invoices':
-        return renderInvoicesSection();
-      default:
-        return null;
-    }
-  };
-
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
-        style={styles.sendSMSButton}
-        onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={styles.sendSMSButton} onPress={() => setModalVisible(true)}>
         <MaterialIcons name="message" size={30} color="white" />
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.sendBillButton}
-        onPress={sendCurrentBill}>
+      <TouchableOpacity style={styles.sendBillButton} onPress={sendCurrentBill}>
         <Text style={styles.sendBillButtonText}>Send Current Bill</Text>
       </TouchableOpacity>
 
       <FlatList
-        data={data}
-        renderItem={renderItem}
+        data={[{ type: 'customerDetails' }, { type: 'invoices' }]}
+        renderItem={({ item }) => (item.type === 'customerDetails' ? renderCustomerDetails() : renderInvoicesSection())}
         keyExtractor={(item) => item.type}
         contentContainerStyle={styles.listContainer}
       />
 
       {/* SMS Modal */}
-      <Modal
-        visible={modalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal visible={modalVisible} animationType="fade" transparent onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Type your SMS</Text>
@@ -187,9 +173,28 @@ const CustomerDetailsPage = () => {
               numberOfLines={4}
             />
             <View style={styles.modalButtonContainer}>
-              <Button title="Send" onPress={() => handleSendSMS(customerData)}/>
+              <Button title="Send" onPress={() => handleSendSMS(customerData)} />
               <Button title="Cancel" onPress={() => setModalVisible(false)} color="gray" />
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Receipt Modal */}
+      <Modal visible={receiptVisible} animationType="slide" transparent onRequestClose={() => setReceiptVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Receipt Details</Text>
+            {selectedInvoice && (
+              <>
+                <Text>Invoice #: {selectedInvoice.invoiceNumber}</Text>
+                <Text>Amount: ${selectedInvoice.invoiceAmount}</Text>
+                <Text>Status: {selectedInvoice.status}</Text>
+                <Text>Created At: {new Date(selectedInvoice.createdAt).toLocaleDateString()}</Text>
+                <Text>Closing Balance: ${selectedInvoice.closingBalance}</Text>
+              </>
+            )}
+            <Button title="Close" onPress={() => setReceiptVisible(false)} />
           </View>
         </View>
       </Modal>
@@ -250,11 +255,10 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
-    marginTop: 10,
   },
   sendBillButtonText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
+    color: 'white',
+    fontSize: 16,
   },
   modalOverlay: {
     flex: 1,
@@ -263,51 +267,40 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    width: '80%',
+    backgroundColor: 'white',
     padding: 20,
-    backgroundColor: '#ffffff',
     borderRadius: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    alignItems: 'center',
+    width: '80%',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 15,
-    color: '#00796b',
   },
   smsInput: {
-    width: '100%',
     height: 100,
-    borderColor: '#00796b',
+    borderColor: '#ccc',
     borderWidth: 1,
-    marginBottom: 20,
+    borderRadius: 5,
     padding: 10,
-    borderRadius: 8,
-    textAlignVertical: 'top', // Ensures the text aligns properly when typing multi-line text
+    marginBottom: 10,
+    textAlignVertical: 'top',
   },
   modalButtonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 10,
   },
   snackbar: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: '#00796b',
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
     alignItems: 'center',
   },
   snackbarText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: 'white',
   },
 });
 

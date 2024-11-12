@@ -270,7 +270,7 @@ const HomeScreen = () => {
         ))}
 
     <Button mode="outlined" onPress={() => router.navigate('/smsDelivery/delivery')} style={styles.updateProfileButton}>
-          SMS Delivery Statistics 
+          SMS Outbox 
         </Button>
       </ScrollView>
 
