@@ -2,11 +2,11 @@ module.exports = {
   expo: {
     name: process.env.APP_NAME || 'TaQa Mali',
     slug: 'client',
-    icon: './assets/images/icon.png',
+    icon: './icon.png',
     version: '1.0.0',
     orientation: 'portrait',
     splash: {
-      image: './assets/images/splash.png',
+      image: './icon.png',
       resizeMode: 'contain',
       backgroundColor: '#ffffff',
     },
@@ -16,7 +16,7 @@ module.exports = {
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: './assets/images/adaptive-icon.png',
+        foregroundImage: './icon.png',
         backgroundColor: '#ffffff',
       },
       package: 'com.kiumbe.taqamali', // Your package name
